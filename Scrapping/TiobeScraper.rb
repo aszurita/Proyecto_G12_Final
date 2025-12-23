@@ -3,7 +3,7 @@ require 'nokogiri'
 require 'csv'
 
 puts 'TIOBE'
-class TiobeNavegador
+class ScraperTiobe
   def initialize(url_base)
     @url_base = url_base
     @html_main = URI.open(@url_base).read
@@ -74,7 +74,7 @@ class TiobeNavegador
   end
 end
 
-navegador = TiobeNavegador.new('https://www.tiobe.com/tiobe-index/')
-navegador.ejecutar
+scraper = ScraperTiobe.new('https://www.tiobe.com/tiobe-index/')
+scraper.ejecutar
 
 puts "\nArchivos generados con éxito."
