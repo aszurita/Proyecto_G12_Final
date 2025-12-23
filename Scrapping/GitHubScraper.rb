@@ -57,19 +57,19 @@ class GithubScraper
     LANGUAGES.each do |lenguaje|
       url = "#{TRENDING_URL}/#{lenguaje}?since=daily"
       parsed_content = obtener_contenido_parseado(url)
-      primer_repo = parsed_content.css('div[data-hpc] article.Box-row').first
-
-      next unless primer_repo
-
-      datos = extraer_datos_repositorio(primer_repo)
-      guardar_en_csv(@archivo_top_lenguajes, [
-        datos[:lenguaje],
-        datos[:nombre_repo],
-        datos[:nombre_user],
-        datos[:url],
-        datos[:estrellas],
-        datos[:forks]
-      ])
+      repositorios = parsed_content.css('div[data-hpc] article.Box-row')
+      next if repositorios.empty?
+      repositorios.each do |repo|
+        datos = extraer_datos_repositorio(repo)
+        guardar_en_csv(@archivo_top_lenguajes, [
+          datos[:lenguaje],
+          datos[:nombre_repo],
+          datos[:nombre_user],
+          datos[:url],
+          datos[:estrellas],
+          datos[:forks]
+        ])
+      end
     end
   end
 
