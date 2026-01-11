@@ -1,6 +1,7 @@
 """
 Dashboard de Visualización - Pull Requests en GitHub (2020-2024)
 Fuente de datos: Madnight GitHub Hut
+Análisis enfocado en 15 lenguajes principales
 """
 
 import pandas as pd
@@ -14,11 +15,26 @@ import numpy as np
 # ============================================================================
 
 print("Cargando datos...")
-df = pd.read_csv('Datos_procesados/MadnightPullRequests_cleaned.csv')
+df_original = pd.read_csv('Datos_procesados/MadnightPullRequests_cleaned.csv')
 
-print(f"Datos cargados: {len(df)} registros")
+# ============================================================================
+# FILTRO DE LENGUAJES ESPECÍFICOS
+# ============================================================================
+
+# Lista de lenguajes a analizar (definida por el equipo)
+LENGUAJES_SELECCIONADOS = [
+    'Python', 'C', 'C++', 'C#', 'Java', 'JavaScript', 
+    'Assembly', 'R', 'Perl', 'Fortran', 'Rust', 
+    'MATLAB', 'PHP', 'Go', 'Kotlin'
+]
+
+# Filtrar el dataframe para incluir solo los lenguajes seleccionados
+df = df_original[df_original['Lenguaje'].isin(LENGUAJES_SELECCIONADOS)].copy()
+
+print(f"Datos cargados: {len(df)} registros (filtrados de {len(df_original)})")
 print(f"Período: {df['Año'].min()} - {df['Año'].max()}")
-print(f"Lenguajes únicos: {df['Lenguaje'].nunique()}")
+print(f"Lenguajes analizados: {df['Lenguaje'].nunique()} de 15 seleccionados")
+print(f"Lenguajes incluidos: {sorted(df['Lenguaje'].unique())}")
 
 # ============================================================================
 # PREGUNTA 1: Top lenguajes en Ranking #1 por año
@@ -106,22 +122,33 @@ def crear_grafico_top_lenguajes():
     
     return fig
 
+
 # ============================================================================
-# PREGUNTA 2: Heatmap de porcentajes por año y quarter
+# PREGUNTA 2: Heatmap de porcentajes por año y quarter 
 # ============================================================================
 
-def crear_heatmap_quarters():
+def crear_heatmap_quarters(anio_seleccionado='Todos', num_lenguajes=15):
     """
     ¿Cuál es el porcentaje de pull requests que ha tenido cada lenguaje 
     de programación a lo largo de los años por trimestres 2020-2024?
+    
+    Ahora con selector de año para análisis detallado
     """
-    # Seleccionar los top 15 lenguajes más populares (por promedio de porcentaje)
-    top_languages = df.groupby('Lenguaje')['Porcentaje'].mean().nlargest(15).index.tolist()
+    # Filtrar por año si no es "Todos"
+    if anio_seleccionado == 'Todos':
+        df_filtered = df.copy()
+        titulo_anio = "Todos los Años (2020-2024)"
+    else:
+        df_filtered = df[df['Año'] == int(anio_seleccionado)].copy()
+        titulo_anio = f"Año {anio_seleccionado}"
     
-    df_filtered = df[df['Lenguaje'].isin(top_languages)].copy()
-    
+  
     # Crear columna de período
-    df_filtered['Periodo'] = df_filtered['Año'].astype(str) + '-Q' + df_filtered['Quarter'].astype(str)
+    if anio_seleccionado == 'Todos':
+        df_filtered['Periodo'] = df_filtered['Año'].astype(str) + '-Q' + df_filtered['Quarter'].astype(str)
+    else:
+        # Solo mostrar quarters cuando es un año específico
+        df_filtered['Periodo'] = 'Q' + df_filtered['Quarter'].astype(str)
     
     # Crear matriz pivot
     heatmap_data = df_filtered.pivot_table(
@@ -131,9 +158,20 @@ def crear_heatmap_quarters():
         aggfunc='mean'
     )
     
+    heatmap_data = heatmap_data.fillna(0)
+
+    # Ordenar columnas (quarters o períodos)
+    if anio_seleccionado != 'Todos':
+        quarter_order = ['Q1', 'Q2', 'Q3', 'Q4']
+        heatmap_data = heatmap_data[[col for col in quarter_order if col in heatmap_data.columns]]
+    
     # Ordenar por promedio general
     heatmap_data['promedio'] = heatmap_data.mean(axis=1)
     heatmap_data = heatmap_data.sort_values('promedio', ascending=False)
+    
+    if num_lenguajes < 15:
+        heatmap_data = heatmap_data.head(num_lenguajes)
+    
     heatmap_data = heatmap_data.drop('promedio', axis=1)
     
     # Crear heatmap
@@ -144,18 +182,26 @@ def crear_heatmap_quarters():
         colorscale='RdYlGn',
         text=np.round(heatmap_data.values, 2),
         texttemplate='%{text}%',
-        textfont={"size": 9},
+        textfont={"size": 10},
         colorbar=dict(title="Porcentaje<br>PR (%)")
     ))
     
+    # Texto del título según cantidad de lenguajes
+    if num_lenguajes == 15:
+        subtitulo = "15 Lenguajes Seleccionados"
+    elif num_lenguajes == 10:
+        subtitulo = "Top 10 Lenguajes"
+    else:
+        subtitulo = "Top 5 Lenguajes"
+    
     fig.update_layout(
         title={
-            'text': 'Heatmap: Porcentaje de Pull Requests por Quarter (Top 15 Lenguajes)',
+            'text': f'Heatmap: Porcentaje de Pull Requests - {titulo_anio}',
             'x': 0.5,
             'xanchor': 'center',
             'font': {'size': 18, 'color': '#2c3e50'}
         },
-        xaxis_title='Período (Año-Quarter)',
+        xaxis_title='Período (Quarter)' if anio_seleccionado != 'Todos' else 'Período (Año-Quarter)',
         yaxis_title='Lenguaje de Programación',
         height=600,
         plot_bgcolor='white',
@@ -166,17 +212,26 @@ def crear_heatmap_quarters():
     
     return fig
 
+
 # ============================================================================
 # PREGUNTA 3: Medidores de promedio general
 # ============================================================================
 
-def crear_medidores_promedio():
+def crear_medidores_promedio(anio_seleccionado='Todos'):
     """
     ¿Cuál es el promedio general de pull requests para cada uno de los 
     lenguajes de programación en el periodo de estudio 2020-2024?
     """
+
+    if anio_seleccionado == 'Todos':
+        df_filtered = df.copy()
+        texto_periodo = "2020-2024"
+    else:
+        df_filtered = df[df['Año'] == int(anio_seleccionado)].copy()
+        texto_periodo = anio_seleccionado
+    
     # Calcular promedio por lenguaje (top 10)
-    promedio_df = df.groupby('Lenguaje')['Porcentaje'].mean().reset_index()
+    promedio_df = df_filtered.groupby('Lenguaje')['Porcentaje'].mean().reset_index()
     promedio_df = promedio_df.sort_values('Porcentaje', ascending=False).head(10)
     
     # Crear subplots con medidores
@@ -234,7 +289,10 @@ def crear_medidores_promedio():
     
     fig.update_layout(
         title={
-            'text': 'Promedio General de Pull Requests por Lenguaje (2020-2024)',
+            'text': (
+                'Promedio General de Pull Requests por Lenguaje (2020-2024)'
+                '<br><sub>(Este gráfico se actualiza automáticamente según el año seleccionado arriba)</sub><br>'
+            ),
             'x': 0.5,
             'xanchor': 'center',
             'font': {'size': 18, 'color': '#2c3e50'}
@@ -242,7 +300,8 @@ def crear_medidores_promedio():
         height=600,
         showlegend=False,
         paper_bgcolor='white',
-        font=dict(size=10)
+        font=dict(size=10),
+        margin=dict(t=120, b=40, l=40, r=40) 
     )
     
     return fig
@@ -293,7 +352,7 @@ app.layout = html.Div(style={'backgroundColor': colors['background'], 'fontFamil
             }
         ),
         html.P(
-            'Fuente: Madnight GitHub Hut',
+            'Fuente: Madnight GitHub Hut | Enfoque: 15 Lenguajes Principales',
             style={
                 'color': 'white',
                 'textAlign': 'center',
@@ -363,17 +422,78 @@ app.layout = html.Div(style={'backgroundColor': colors['background'], 'fontFamil
             'borderRadius': '10px',
             'boxShadow': '0 2px 8px rgba(0,0,0,0.1)'
         }, children=[
-            # html.H3(
-            #     'Pregunta 2: ¿Porcentaje de pull requests por trimestre y año?',
-            #     style={'color': colors['text'], 'marginBottom': '20px'}
-            # ),
+            # Contenedor del selector
+            # Contenedor de los DOS selectores
+            html.Div(style={
+                'marginBottom': '20px',
+                'display': 'flex',
+                'alignItems': 'center',
+                'justifyContent': 'center',
+                'gap': '30px',
+                'flexWrap': 'wrap'
+            }, children=[
+                # Selector de Año
+                html.Div(style={'display': 'flex', 'alignItems': 'center', 'gap': '10px'}, children=[
+                    html.Label(
+                        'Año:',
+                        style={
+                            'fontSize': '16px',
+                            'fontWeight': 'bold',
+                            'color': colors['text']
+                        }
+                    ),
+                    dcc.Dropdown(
+                        id='dropdown-anio',
+                        options=[
+                            {'label': '2020-2024', 'value': 'Todos'},
+                            {'label': '2020', 'value': '2020'},
+                            {'label': '2021', 'value': '2021'},
+                            {'label': '2022', 'value': '2022'},
+                            {'label': '2023', 'value': '2023'},
+                            {'label': '2024', 'value': '2024'}
+                        ],
+                        value='Todos',
+                        clearable=False,
+                        style={
+                            'width': '200px',
+                            'fontSize': '14px'
+                        }
+                    )
+                ]),
+                
+                # Selector de Cantidad de Lenguajes (NUEVO)
+                html.Div(style={'display': 'flex', 'alignItems': 'center', 'gap': '10px'}, children=[
+                    html.Label(
+                        'Mostrar:',
+                        style={
+                            'fontSize': '16px',
+                            'fontWeight': 'bold',
+                            'color': colors['text']
+                        }
+                    ),
+                    dcc.Dropdown(
+                        id='dropdown-num-lenguajes',
+                        options=[
+                            {'label': 'Top 5 Lenguajes', 'value': 5},
+                            {'label': 'Top 10 Lenguajes', 'value': 10},
+                            {'label': 'Todos (15)', 'value': 15}
+                        ],
+                        value=15,
+                        clearable=False,
+                        style={
+                            'width': '200px',
+                            'fontSize': '14px'
+                        }
+                    )
+                ])
+            ]),
+            
+            # Gráfico que se actualizará con AMBOS filtros
             dcc.Graph(
                 id='heatmap-quarters',
-                figure=crear_heatmap_quarters(),
                 config={'displayModeBar': False}
             )
         ]),
-        
         # Pregunta 3: Medidores
         html.Div(style={
             'backgroundColor': colors['card'],
@@ -388,7 +508,7 @@ app.layout = html.Div(style={'backgroundColor': colors['background'], 'fontFamil
             # ),
             dcc.Graph(
                 id='medidores-promedio',
-                figure=crear_medidores_promedio(),
+                # figure=crear_medidores_promedio(),
                 config={'displayModeBar': False}
             )
         ]),
@@ -405,6 +525,34 @@ app.layout = html.Div(style={'backgroundColor': colors['background'], 'fontFamil
         ])
     ])
 ])
+
+# ============================================================================
+# CALLBACKS PARA INTERACTIVIDAD
+# ============================================================================
+
+@app.callback(
+    Output('heatmap-quarters', 'figure'),
+    [Input('dropdown-anio', 'value'),
+     Input('dropdown-num-lenguajes', 'value')]
+)
+def actualizar_heatmap(anio_seleccionado, num_lenguajes):
+    """
+    Callback que actualiza el heatmap cuando se selecciona un año diferente
+    """
+    return crear_heatmap_quarters(anio_seleccionado, num_lenguajes)
+
+@app.callback(
+    Output('medidores-promedio', 'figure'),
+    Input('dropdown-anio', 'value')
+)
+def actualizar_medidores(anio_seleccionado):
+    """
+    Callback que actualiza los medidores cuando se selecciona un año diferente
+    Sincronizado con el filtro del Heatmap
+    """
+    return crear_medidores_promedio(anio_seleccionado)
+
+
 
 # ============================================================================
 # EJECUTAR SERVIDOR
