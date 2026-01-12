@@ -1,2 +1,5 @@
-# No subir la carpeta ignorar
-ignorar/
+# No subir la carpeta historial
+Historial/
+
+# No subir ambiente virtual
+projectG12_env/
