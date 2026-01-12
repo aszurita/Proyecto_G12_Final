@@ -7,7 +7,7 @@ puts 'Scraping GitHub'
 class GithubScraper
   BASE_URL = "https://github.com"
   TRENDING_URL = "#{BASE_URL}/trending"
-  LANGUAGES = ["ruby", "python", "javascript", "go", "rust", "cpp", "typescript", "swift", "php", "c"]
+  LANGUAGES = ["python", "c", "cpp", "c%23", "java", "javascript", "assembly", "r", "perl", "fortran", "rust", "matlab", "php", "go", "kotlin"]
 
   def initialize
     @archivo_top_repos = "Datos/TopRepositorios.csv"
