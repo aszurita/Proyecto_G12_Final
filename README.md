@@ -52,14 +52,23 @@ pip install -r requirements.txt
 ```
 
 Las dependencias principales son:
+
+FRONTED
+Lenguaje Usado : Python
 - dash
 - dash-bootstrap-components
 - plotly
-- pandas
-- numpy
-
+  
+BACKEND (Scrapping)
+Lenguaje Usado : Ruby
+- Nokogiri
+- Selenium
 ## Estructura del Proyecto
 
+PREPROCESAMIENTO
+Lenguaje Usado : Python
+- pandas
+- re
 ```
 Proyecto_G12_Final/
 ├── Datos/                          # Carpeta con datos extraídos
