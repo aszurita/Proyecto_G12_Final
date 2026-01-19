@@ -173,9 +173,5 @@ pip install -r requirements.txt
 ### El dashboard no carga datos
 Verificar que la carpeta `Datos/` contenga todos los archivos CSV necesarios.
 
-### Puerto 8050 en uso
-Modificar el puerto en `main.py` línea final:
-```python
-app.run_server(debug=True, port=8051)  # Cambiar a otro puerto
-```
+
 
