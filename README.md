@@ -136,20 +136,6 @@ Presionar `Ctrl + C` en la terminal donde se está ejecutando el dashboard.
 2. **Medidor de Promedio**: Indicador gauge del promedio de PRs por lenguaje
 3. **Lenguajes en Top 1**: Ranking de lenguajes con más PRs liderando
 
-## Lenguajes Analizados
-
-El dashboard analiza los siguientes 10 lenguajes de programación:
-- Python
-- JavaScript
-- Java
-- C++
-- Go
-- TypeScript
-- PHP
-- Ruby
-- C
-- Rust
-
 ## Notas Técnicas
 
 ### Web Scraping
