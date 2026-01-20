@@ -52,14 +52,23 @@ pip install -r requirements.txt
 ```
 
 Las dependencias principales son:
+
+FRONTED
+Lenguaje Usado : Python
 - dash
 - dash-bootstrap-components
 - plotly
-- pandas
-- numpy
-
+  
+BACKEND (Scrapping)
+Lenguaje Usado : Ruby
+- Nokogiri
+- Selenium
 ## Estructura del Proyecto
 
+PREPROCESAMIENTO
+Lenguaje Usado : Python
+- pandas
+- re
 ```
 Proyecto_G12_Final/
 ├── Datos/                          # Carpeta con datos extraídos
@@ -136,20 +145,6 @@ Presionar `Ctrl + C` en la terminal donde se está ejecutando el dashboard.
 2. **Medidor de Promedio**: Indicador gauge del promedio de PRs por lenguaje
 3. **Lenguajes en Top 1**: Ranking de lenguajes con más PRs liderando
 
-## Lenguajes Analizados
-
-El dashboard analiza los siguientes 10 lenguajes de programación:
-- Python
-- JavaScript
-- Java
-- C++
-- Go
-- TypeScript
-- PHP
-- Ruby
-- C
-- Rust
-
 ## Notas Técnicas
 
 ### Web Scraping
@@ -173,9 +168,5 @@ pip install -r requirements.txt
 ### El dashboard no carga datos
 Verificar que la carpeta `Datos/` contenga todos los archivos CSV necesarios.
 
-### Puerto 8050 en uso
-Modificar el puerto en `main.py` línea final:
-```python
-app.run_server(debug=True, port=8051)  # Cambiar a otro puerto
-```
+
 
