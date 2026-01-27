@@ -43,7 +43,7 @@ def getIndicadorAnio(df, anio1='2024', anio2='2025'):
     """
     df_anio = df[['Language', anio1, anio2]].copy()
     df_anio['Indicador'] = (df_anio[anio2] - df_anio[anio1]).round(2)
-
+    df_anio = df_anio.sort_values(by="Indicador",ascending=False)
     table = dash_table.DataTable(
         columns=[
             {"name": "Lenguaje", "id": "Language"},
@@ -147,9 +147,14 @@ def create_line_chart(df, anio1=2020, anio2=2025):
             xanchor="center",
             x=0.5
         ),
-        margin=dict(b=100),
+        margin=dict(l=40, r=40, t=60, b=100),
         paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)'
+        plot_bgcolor='rgba(0,0,0,0)',
+        title={
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 12, 'color': '#08306b'}
+        }
     )
 
     return fig
@@ -175,11 +180,21 @@ def get_monthly_winners(df, year1=2020, year2=2025):
         title=f'Número de Veces que Cada Lenguaje Fue el Mejor Calificado ({year1}-{year2})',
         color='Top1_Count',
         color_continuous_scale='blues',
-        text_auto=True
+        text='Top1_Count'
+    )
+    fig.update_traces(
+        textfont=dict(size=15, color='black', family='Arial Black'),
+        textposition='outside'
     )
     fig.update_layout(
         paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)'
+        plot_bgcolor='rgba(0,0,0,0)',
+        margin=dict(l=40, r=40, t=60, b=40),
+        title={
+            'x': 0.5,
+            'xanchor': 'center',
+            'font': {'size': 16, 'color': '#08306b'}
+        }
     )
     return fig
 
@@ -726,91 +741,88 @@ app.layout = html.Div(style={'background': colors['background_solid'], 'fontFami
             # Contenido de la sección
             html.Div(style={
                 'display': 'flex',
+                'flexDirection': 'column',
                 'gap': '20px'
             }, children=[
 
-                # Columna izquierda: Tabla con dropdowns
-                html.Div(children=[
-                    # Filtros de años
-                    html.Div(children=[
-                        html.Div(children=[
-                            html.Label("Año 1:", style={"fontWeight": "bold", "marginBottom": "5px", "color": colors['text']}),
-                            dcc.Dropdown(
-                                id='year-dropdown-1',
-                                options=[{'label': year, 'value': year} for year in years],
-                                value='2024',
-                                clearable=False,
-                                style={"width": "150px"}
-                            ),
-                        ], style={"marginRight": "20px"}),
-                        html.Div(children=[
-                            html.Label("Año 2:", style={"fontWeight": "bold", "marginBottom": "5px", "color": colors['text']}),
-                            dcc.Dropdown(
-                                id='year-dropdown-2',
-                                options=[{'label': year, 'value': year} for year in years],
-                                value='2025',
-                                clearable=False,
-                                style={"width": "150px"}
-                            ),
-                        ]),
-                    ], style={
-                        "display": "flex",
-                        "justifyContent": "center",
-                        "alignItems": "flex-end",
-                        "marginBottom": "20px",
-                        "gap": "20px"
-                    }),
-                    # Tabla
-                    html.Div(
-                        id='tabla-container',
-                        children=[getIndicadorAnio(rating_promedio_df, '2024', '2025')]
-                    )
-                ], style={
-                    "flex": "1",
-                    "padding": "20px",
+                # Fila 1: Rango de años centrado
+                html.Div(style={
                     "backgroundColor": colors['card'],
                     "borderRadius": "12px",
-                    "boxShadow": colors['shadow'], "border": f"1px solid {colors['border_light']}",
-                    "marginRight": "10px"
-                }),
+                    "boxShadow": colors['shadow'],
+                    "border": f"1px solid {colors['border_light']}",
+                    "padding": "20px 40px"
+                }, children=[
+                    html.Label("Rango de Años:", style={
+                        "fontWeight": "bold",
+                        "marginBottom": "15px",
+                        "display": "block",
+                        "textAlign": "center",
+                        "color": colors['text'],
+                        "fontSize": "16px"
+                    }),
+                    dcc.RangeSlider(
+                        id='year-range-slider',
+                        min=2020,
+                        max=2025,
+                        step=1,
+                        marks={year: str(year) for year in range(2020, 2026)},
+                        value=[2020, 2025],
+                        tooltip={"placement": "bottom", "always_visible": False}
+                    )
+                ]),
 
-                # Columna derecha: Serie de tiempo con filtro
-                html.Div(children=[
-                    # Filtro de rango de años
-                    html.Div(children=[
-                        html.Label("Rango de Años:", style={"fontWeight": "bold", "marginBottom": "10px", "textAlign": "center", "color": colors['text']}),
-                        dcc.RangeSlider(
-                            id='year-range-slider',
-                            min=2020,
-                            max=2025,
-                            step=1,
-                            marks={year: str(year) for year in range(2020, 2026)},
-                            value=[2020, 2025],
-                            tooltip={"placement": "bottom", "always_visible": False}
-                        ),
-                    ], style={
+                # Fila 2: Tabla a la izquierda y gráficos a la derecha
+                html.Div(style={
+                    'display': 'flex',
+                    'gap': '20px',
+                    'alignItems': 'stretch'
+                }, children=[
+
+                    # Columna izquierda: Tabla
+                    html.Div(style={
+                        "flex": "1",
                         "padding": "20px",
-                        "marginBottom": "20px"
-                    }),
-                    # Gráfico de serie de tiempo
-                    html.Div(
-                        id='timeseries-container',
-                        children=[dcc.Graph(figure=create_line_chart(time_series_df, 2020, 2025))],
-                        style={"marginBottom": "20px"}
-                    ),
-                    # Gráfico de ganadores mensuales
-                    html.Div(
-                        id='winners-container',
-                        children=[dcc.Graph(figure=get_monthly_winners(time_series_df, 2020, 2025))]
-                    )
-                ], style={
-                    "flex": "1",
-                    "padding": "20px",
-                    "backgroundColor": colors['card'],
-                    "borderRadius": "12px",
-                    "boxShadow": colors['shadow'], "border": f"1px solid {colors['border_light']}",
-                    "marginLeft": "10px"
-                })
+                        "backgroundColor": colors['card'],
+                        "borderRadius": "12px",
+                        "boxShadow": colors['shadow'],
+                        "border": f"1px solid {colors['border_light']}",
+                        "display": "flex",
+                        "flexDirection": "column",
+                        "justifyContent": "center"
+                    }, children=[
+                        html.Div(
+                            id='tabla-container',
+                            children=[getIndicadorAnio(rating_promedio_df, '2020', '2025')]
+                        )
+                    ]),
+
+                    # Columna derecha: Gráficos
+                    html.Div(style={
+                        "flex": "1",
+                        "padding": "20px",
+                        "backgroundColor": colors['card'],
+                        "borderRadius": "12px",
+                        "boxShadow": colors['shadow'],
+                        "border": f"1px solid {colors['border_light']}",
+                        "display": "flex",
+                        "flexDirection": "column",
+                        "justifyContent": "space-between"
+                    }, children=[
+                        # Gráfico de serie de tiempo
+                        html.Div(
+                            id='timeseries-container',
+                            children=[dcc.Graph(figure=create_line_chart(time_series_df, 2020, 2025))],
+                            style={"flex": "1"}
+                        ),
+                        # Gráfico de ganadores mensuales
+                        html.Div(
+                            id='winners-container',
+                            children=[dcc.Graph(figure=get_monthly_winners(time_series_df, 2020, 2025))],
+                            style={"flex": "1"}
+                        )
+                    ])
+                ])
             ])
         ]),
 
@@ -1164,67 +1176,27 @@ app.layout = html.Div(style={'background': colors['background_solid'], 'fontFami
 # CALLBACKS PARA INTERACTIVIDAD
 # ============================================================================
 
-# Callback para actualizar opciones del dropdown 1 basándose en la selección del dropdown 2
-# El año 1 debe ser menor que el año 2
-@app.callback(
-    Output('year-dropdown-1', 'options'),
-    Input('year-dropdown-2', 'value')
-)
-def update_dropdown1_options(selected_year2):
-    """
-    Actualiza las opciones del dropdown de año 1 para que solo muestre años menores al año 2
-    """
-    return [
-        {'label': year, 'value': year, 'disabled': int(year) >= int(selected_year2)}
-        for year in years
-    ]
-
-# Callback para actualizar opciones del dropdown 2 basándose en la selección del dropdown 1
-# El año 2 debe ser mayor que el año 1
-@app.callback(
-    Output('year-dropdown-2', 'options'),
-    Input('year-dropdown-1', 'value')
-)
-def update_dropdown2_options(selected_year1):
-    """
-    Actualiza las opciones del dropdown de año 2 para que solo muestre años mayores al año 1
-    """
-    return [
-        {'label': year, 'value': year, 'disabled': int(year) <= int(selected_year1)}
-        for year in years
-    ]
-
-# Callback para actualizar la tabla cuando cambian los años seleccionados
+# Callback para actualizar la tabla y gráficos cuando cambia el rango de años
 @app.callback(
     Output('tabla-container', 'children'),
-    Input('year-dropdown-1', 'value'),
-    Input('year-dropdown-2', 'value')
-)
-def update_table(year1, year2):
-    """
-    Actualiza la tabla de indicadores cuando se cambian los años seleccionados
-    """
-    if year1 and year2 and year1 != year2:
-        return getIndicadorAnio(rating_promedio_df, year1, year2)
-    return getIndicadorAnio(rating_promedio_df, '2024', '2025')
-
-# Callback para actualizar el gráfico de serie de tiempo cuando cambia el rango
-@app.callback(
     Output('timeseries-container', 'children'),
     Output('winners-container', 'children'),
     Input('year-range-slider', 'value')
 )
-def update_timeseries(year_range):
+def update_section1(year_range):
     """
-    Actualiza los gráficos de serie de tiempo y ganadores mensuales cuando cambia el rango de años
+    Actualiza la tabla y los gráficos cuando cambia el rango de años
     """
     if year_range and len(year_range) == 2:
+        year1, year2 = str(year_range[0]), str(year_range[1])
+        tabla = getIndicadorAnio(rating_promedio_df, year1, year2)
         line_chart = dcc.Graph(figure=create_line_chart(time_series_df, year_range[0], year_range[1]))
         winners_chart = dcc.Graph(figure=get_monthly_winners(time_series_df, year_range[0], year_range[1]))
-        return line_chart, winners_chart
+        return tabla, line_chart, winners_chart
+    tabla = getIndicadorAnio(rating_promedio_df, '2020', '2025')
     line_chart = dcc.Graph(figure=create_line_chart(time_series_df, 2020, 2025))
     winners_chart = dcc.Graph(figure=get_monthly_winners(time_series_df, 2020, 2025))
-    return line_chart, winners_chart
+    return tabla, line_chart, winners_chart
 
 # Callback para actualizar el gráfico de repositorios por lenguaje
 @app.callback(
