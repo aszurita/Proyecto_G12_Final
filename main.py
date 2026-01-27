@@ -467,9 +467,17 @@ def crear_heatmap_quarters(anio_seleccionado='Todos', num_lenguajes=15):
         colorscale='blues',
         text=np.round(heatmap_data.values, 2),
         texttemplate='%{text}%',
-        textfont={"size": 10},
+        textfont={"size": 11},
         colorbar=dict(title="Porcentaje<br>PR (%)")
     ))
+
+    # Altura dinámica sincronizada con los medidores
+    if num_lenguajes <= 5:
+        altura = 400
+    elif num_lenguajes <= 10:
+        altura = 700
+    else:
+        altura = 1000
 
     fig.update_layout(
         title={
@@ -480,7 +488,7 @@ def crear_heatmap_quarters(anio_seleccionado='Todos', num_lenguajes=15):
         },
         xaxis_title='Período (Quarter)' if anio_seleccionado != 'Todos' else 'Período (Año-Quarter)',
         yaxis_title='Lenguaje de Programación',
-        height=600,
+        height=altura,
         plot_bgcolor='white',
         paper_bgcolor='white',
         xaxis={'side': 'bottom'},
@@ -489,29 +497,39 @@ def crear_heatmap_quarters(anio_seleccionado='Todos', num_lenguajes=15):
 
     return fig
 
-def crear_medidores_promedio(anio_seleccionado='Todos'):
+def crear_medidores_promedio(anio_seleccionado='Todos', num_lenguajes=10):
     """
     ¿Cuál es el promedio general de pull requests?
     """
     if anio_seleccionado == 'Todos':
         df_filtered = df.copy()
+        titulo_grafico = "<b>Promedio General de Pull Requests por Lenguaje (2020-2024)</b>"
     else:
         df_filtered = df[df['Año'] == int(anio_seleccionado)].copy()
+        titulo_grafico = f"<b>Promedio General de Pull Requests por Lenguaje ({anio_seleccionado})</b>"
 
     promedio_df = df_filtered.groupby('Lenguaje')['Porcentaje'].mean().reset_index()
-    promedio_df = promedio_df.sort_values('Porcentaje', ascending=False).head(10)
+    promedio_df = promedio_df.sort_values('Porcentaje', ascending=False).head(num_lenguajes)
 
     max_val = promedio_df['Porcentaje'].max() * 1.2
 
+    # Calcular filas y columnas dinámicamente
+    if num_lenguajes <= 5:
+        n_cols = num_lenguajes
+        n_rows = 1
+    else:
+        n_cols = 5
+        n_rows = (num_lenguajes + 4) // 5  # Redondeo hacia arriba
+
     fig = make_subplots(
-        rows=2, cols=5,
-        specs=[[{'type': 'indicator'}] * 5] * 2,
+        rows=n_rows, cols=n_cols,
+        specs=[[{'type': 'indicator'}] * n_cols for _ in range(n_rows)],
         subplot_titles=promedio_df['Lenguaje'].tolist()
     )
 
     for idx, (_, row) in enumerate(promedio_df.iterrows(), 1):
-        row_num = (idx - 1) // 5 + 1
-        col_num = (idx - 1) % 5 + 1
+        row_num = (idx - 1) // n_cols + 1
+        col_num = (idx - 1) % n_cols + 1
 
         # Colores de la paleta Blues según el porcentaje
         if row['Porcentaje'] > 10:
@@ -557,17 +575,24 @@ def crear_medidores_promedio(anio_seleccionado='Todos'):
             row=row_num, col=col_num
         )
 
+    # Altura dinámica sincronizada con el heatmap
+    if num_lenguajes <= 5:
+        altura = 400
+    elif num_lenguajes <= 10:
+        altura = 700
+    else:
+        altura = 1000
+
     fig.update_layout(
         title={
             'text': (
-                '<b>Promedio General de Pull Requests por Lenguaje (2020-2024)</b>'
-                '<br><sub style="color: #4292c6;">(Este gráfico se actualiza automáticamente según el año seleccionado arriba)</sub><br>'
+                f'{titulo_grafico}'
             ),
             'x': 0.5,
             'xanchor': 'center',
             'font': {'size': 18, 'color': '#08306b'}
         },
-        height=600,
+        height=altura,
         showlegend=False,
         paper_bgcolor='white',
         font=dict(size=11, color='#08306b'),
@@ -922,19 +947,22 @@ app.layout = html.Div(style={'background': colors['background_solid'], 'fontFami
                 )
             ]),
 
-            # Pregunta 2: Heatmap
+            # Contenedor principal: Dropdowns + Gráficos
             html.Div(style={
-                'backgroundColor': colors['card'],
-                'padding': '25px',
-                'marginBottom': '30px',
-                'borderRadius': '12px',
-                'boxShadow': colors['shadow']
+                'display': 'flex',
+                'flexDirection': 'column',
+                'gap': '20px',
+                'marginBottom': '30px'
             }, children=[
+                # Fila 1: Dropdowns centrados
                 html.Div(style={
-                    'marginBottom': '20px',
+                    'backgroundColor': colors['card'],
+                    'padding': '20px',
+                    'borderRadius': '12px',
+                    'boxShadow': colors['shadow'],
                     'display': 'flex',
-                    'alignItems': 'center',
                     'justifyContent': 'center',
+                    'alignItems': 'center',
                     'gap': '30px',
                     'flexWrap': 'wrap'
                 }, children=[
@@ -990,24 +1018,53 @@ app.layout = html.Div(style={'background': colors['background_solid'], 'fontFami
                         )
                     ])
                 ]),
-                dcc.Graph(
-                    id='heatmap-quarters',
-                    config={'displayModeBar': False}
-                )
-            ]),
 
-            # Pregunta 3: Medidores
-            html.Div(style={
-                'backgroundColor': colors['card'],
-                'padding': '25px',
-                'marginBottom': '30px',
-                'borderRadius': '12px',
-                'boxShadow': colors['shadow']
-            }, children=[
-                dcc.Graph(
-                    id='medidores-promedio',
-                    config={'displayModeBar': False}
-                )
+                # Fila 2: Dos gráficos lado a lado (50% cada uno)
+                html.Div(style={
+                    'display': 'flex',
+                    'flexDirection': 'row',
+                    'gap': '20px',
+                    'width': '100%',
+                    'alignItems': 'stretch'
+                }, children=[
+                    # Gráfico Heatmap
+                    html.Div(style={
+                        'width': '50%',
+                        'backgroundColor': colors['card'],
+                        'padding': '25px',
+                        'borderRadius': '12px',
+                        'boxShadow': colors['shadow'],
+                        'boxSizing': 'border-box',
+                        'display': 'flex',
+                        'flexDirection': 'column',
+                        'justifyContent': 'center'
+                    }, children=[
+                        dcc.Graph(
+                            id='heatmap-quarters',
+                            config={'displayModeBar': False},
+                            style={'height': '100%'}
+                        )
+                    ]),
+
+                    # Gráfico Medidores
+                    html.Div(style={
+                        'width': '50%',
+                        'backgroundColor': colors['card'],
+                        'padding': '25px',
+                        'borderRadius': '12px',
+                        'boxShadow': colors['shadow'],
+                        'boxSizing': 'border-box',
+                        'display': 'flex',
+                        'flexDirection': 'column',
+                        'justifyContent': 'center'
+                    }, children=[
+                        dcc.Graph(
+                            id='medidores-promedio',
+                            config={'displayModeBar': False},
+                            style={'height': '100%'}
+                        )
+                    ])
+                ])
             ])
         ]),
 
@@ -1251,14 +1308,15 @@ def actualizar_heatmap(anio_seleccionado, num_lenguajes):
 # Callback para actualizar los medidores
 @app.callback(
     Output('medidores-promedio', 'figure'),
-    Input('dropdown-anio', 'value')
+    [Input('dropdown-anio', 'value'),
+     Input('dropdown-num-lenguajes', 'value')]
 )
-def actualizar_medidores(anio_seleccionado):
+def actualizar_medidores(anio_seleccionado, num_lenguajes):
     """
     Callback que actualiza los medidores cuando se selecciona un año diferente
-    Sincronizado con el filtro del Heatmap
+    o se cambia el número de lenguajes a mostrar
     """
-    return crear_medidores_promedio(anio_seleccionado)
+    return crear_medidores_promedio(anio_seleccionado, num_lenguajes)
 
 
 if __name__ == '__main__':
