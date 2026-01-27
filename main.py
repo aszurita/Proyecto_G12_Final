@@ -513,7 +513,7 @@ def crear_grafico_top_lenguajes():
 
     return fig
 
-def crear_heatmap_quarters(anio_seleccionado='Todos', num_lenguajes=15):
+def crear_heatmap_quarters(anio_seleccionado='Todos', num_lenguajes=15, selected_language=None):
     """
     ¿Cuál es el porcentaje de pull requests por trimestres?
     """
@@ -550,16 +550,50 @@ def crear_heatmap_quarters(anio_seleccionado='Todos', num_lenguajes=15):
 
     heatmap_data = heatmap_data.drop('promedio', axis=1)
 
-    fig = go.Figure(data=go.Heatmap(
-        z=heatmap_data.values,
-        x=heatmap_data.columns,
-        y=heatmap_data.index,
-        colorscale='blues',
-        text=np.round(heatmap_data.values, 2),
-        texttemplate='%{text}%',
-        textfont={"size": 11},
-        colorbar=dict(title="Porcentaje<br>PR (%)")
-    ))
+    # Crear colores personalizados si hay un lenguaje seleccionado
+    if selected_language and selected_language in heatmap_data.index:
+        # Crear una matriz de opacidades
+        z_values = heatmap_data.values
+        shapes = []
+
+        for i, lang in enumerate(heatmap_data.index):
+            if lang != selected_language:
+                # Agregar un rectángulo semi-transparente sobre las filas no seleccionadas
+                shapes.append(dict(
+                    type="rect",
+                    xref="x",
+                    yref="y",
+                    x0=-0.5,
+                    x1=len(heatmap_data.columns) - 0.5,
+                    y0=i - 0.5,
+                    y1=i + 0.5,
+                    fillcolor="rgba(255, 255, 255, 0.7)",
+                    line=dict(width=0),
+                    layer="above"
+                ))
+
+        fig = go.Figure(data=go.Heatmap(
+            z=z_values,
+            x=heatmap_data.columns,
+            y=heatmap_data.index,
+            colorscale='blues',
+            text=np.round(z_values, 2),
+            texttemplate='%{text}%',
+            textfont={"size": 11, "color": "black"},
+            colorbar=dict(title="Porcentaje<br>PR (%)")
+        ))
+        fig.update_layout(shapes=shapes)
+    else:
+        fig = go.Figure(data=go.Heatmap(
+            z=heatmap_data.values,
+            x=heatmap_data.columns,
+            y=heatmap_data.index,
+            colorscale='blues',
+            text=np.round(heatmap_data.values, 2),
+            texttemplate='%{text}%',
+            textfont={"size": 11, "color": "black"},
+            colorbar=dict(title="Porcentaje<br>PR (%)")
+        ))
 
     # Altura dinámica sincronizada con los medidores
     if num_lenguajes <= 5:
@@ -587,7 +621,7 @@ def crear_heatmap_quarters(anio_seleccionado='Todos', num_lenguajes=15):
 
     return fig
 
-def crear_medidores_promedio(anio_seleccionado='Todos', num_lenguajes=10):
+def crear_medidores_promedio(anio_seleccionado='Todos', num_lenguajes=10, selected_language=None):
     """
     ¿Cuál es el promedio general de pull requests?
     """
@@ -611,15 +645,29 @@ def crear_medidores_promedio(anio_seleccionado='Todos', num_lenguajes=10):
         n_cols = 5
         n_rows = (num_lenguajes + 4) // 5  # Redondeo hacia arriba
 
+    # Crear títulos con estilo según selección
+    subplot_titles = []
+    for lang in promedio_df['Lenguaje'].tolist():
+        if selected_language and lang == selected_language:
+            subplot_titles.append(f"<b>{lang}</b>")
+        elif selected_language:
+            subplot_titles.append(f"<span style='opacity:0.3'>{lang}</span>")
+        else:
+            subplot_titles.append(lang)
+
     fig = make_subplots(
         rows=n_rows, cols=n_cols,
         specs=[[{'type': 'indicator'}] * n_cols for _ in range(n_rows)],
-        subplot_titles=promedio_df['Lenguaje'].tolist()
+        subplot_titles=subplot_titles
     )
 
     for idx, (_, row) in enumerate(promedio_df.iterrows(), 1):
         row_num = (idx - 1) // n_cols + 1
         col_num = (idx - 1) % n_cols + 1
+        lang = row['Lenguaje']
+
+        # Determinar si este indicador está seleccionado
+        is_selected = (selected_language is None) or (lang == selected_language)
 
         # Colores de la paleta Blues según el porcentaje
         if row['Porcentaje'] > 10:
@@ -629,34 +677,41 @@ def crear_medidores_promedio(anio_seleccionado='Todos', num_lenguajes=10):
         else:
             color = "#4292c6"  # Azul medio (bajo)
 
+        # Si no está seleccionado, usar colores más claros/opacos
+        if not is_selected:
+            color = "#deebf7"  # Color muy claro para no seleccionados
+            number_color = '#c6dbef'
+        else:
+            number_color = '#08306b'
+
         fig.add_trace(
             go.Indicator(
                 mode="gauge+number+delta",
                 value=row['Porcentaje'],
-                number={'suffix': "%", 'font': {'size': 22, 'color': '#08306b'}},
+                number={'suffix': "%", 'font': {'size': 22, 'color': number_color}},
                 delta={
                     'reference': promedio_df['Porcentaje'].mean(),
-                    'increasing': {'color': '#084594'},
-                    'decreasing': {'color': '#9ecae1'}
+                    'increasing': {'color': '#084594' if is_selected else '#deebf7'},
+                    'decreasing': {'color': '#9ecae1' if is_selected else '#f7fbff'}
                 },
                 gauge={
                     'axis': {
                         'range': [None, max_val],
                         'tickwidth': 1,
                         'tickcolor': "#c6dbef",
-                        'tickfont': {'color': '#08306b', 'size': 10}
+                        'tickfont': {'color': '#08306b' if is_selected else '#deebf7', 'size': 10}
                     },
                     'bar': {'color': color, 'thickness': 0.75},
                     'bgcolor': "#f7fbff",
                     'borderwidth': 2,
-                    'bordercolor': "#c6dbef",
+                    'bordercolor': "#c6dbef" if is_selected else "#f7fbff",
                     'steps': [
-                        {'range': [0, max_val * 0.33], 'color': '#f7fbff'},      # Azul muy claro
-                        {'range': [max_val * 0.33, max_val * 0.66], 'color': '#deebf7'},  # Azul claro
-                        {'range': [max_val * 0.66, max_val], 'color': '#c6dbef'}   # Azul medio-claro
+                        {'range': [0, max_val * 0.33], 'color': '#f7fbff'},
+                        {'range': [max_val * 0.33, max_val * 0.66], 'color': '#deebf7' if is_selected else '#f7fbff'},
+                        {'range': [max_val * 0.66, max_val], 'color': '#c6dbef' if is_selected else '#f7fbff'}
                     ],
                     'threshold': {
-                        'line': {'color': "#2171b5", 'width': 3},
+                        'line': {'color': "#2171b5" if is_selected else "#f7fbff", 'width': 3},
                         'thickness': 0.75,
                         'value': promedio_df['Porcentaje'].mean()
                     }
@@ -1347,26 +1402,29 @@ def actualizar_grafico_lenguaje(lenguaje_seleccionado):
 @app.callback(
     Output('heatmap-quarters', 'figure'),
     [Input('dropdown-anio', 'value'),
-     Input('dropdown-num-lenguajes', 'value')]
+     Input('dropdown-num-lenguajes', 'value'),
+     Input('selected-language-store', 'data')]
 )
-def actualizar_heatmap(anio_seleccionado, num_lenguajes):
+def actualizar_heatmap(anio_seleccionado, num_lenguajes, selected_language):
     """
     Callback que actualiza el heatmap cuando se selecciona un año diferente
+    o cuando cambia el lenguaje seleccionado
     """
-    return crear_heatmap_quarters(anio_seleccionado, num_lenguajes)
+    return crear_heatmap_quarters(anio_seleccionado, num_lenguajes, selected_language)
 
 # Callback para actualizar los medidores
 @app.callback(
     Output('medidores-promedio', 'figure'),
     [Input('dropdown-anio', 'value'),
-     Input('dropdown-num-lenguajes', 'value')]
+     Input('dropdown-num-lenguajes', 'value'),
+     Input('selected-language-store', 'data')]
 )
-def actualizar_medidores(anio_seleccionado, num_lenguajes):
+def actualizar_medidores(anio_seleccionado, num_lenguajes, selected_language):
     """
-    Callback que actualiza los medidores cuando se selecciona un año diferente
-    o se cambia el número de lenguajes a mostrar
+    Callback que actualiza los medidores cuando se selecciona un año diferente,
+    se cambia el número de lenguajes o cuando cambia el lenguaje seleccionado
     """
-    return crear_medidores_promedio(anio_seleccionado, num_lenguajes)
+    return crear_medidores_promedio(anio_seleccionado, num_lenguajes, selected_language)
 
 
 # ============================================================================
