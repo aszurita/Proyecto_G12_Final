@@ -3,3 +3,5 @@ Historial/
 
 # No subir ambiente virtual
 projectG12_env/
+
+*.env

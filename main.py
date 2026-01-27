@@ -2,9 +2,17 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 import dash
-from dash import Dash, dcc, html, dash_table, Input, Output, State
+from dash import Dash, dcc, html, dash_table, Input, Output, State, callback_context
 import numpy as np
 from plotly.subplots import make_subplots
+
+# Importar agente IA (manejo de error si no esta configurado)
+try:
+    from ai_agent import CodeTrendsAgent
+    AI_AVAILABLE = True
+except Exception as e:
+    AI_AVAILABLE = False
+    print(f"Agente IA no disponible: {e}")
 
 # =========================
 # 1) Cargar y preparar datos
@@ -1214,6 +1222,199 @@ app.layout = html.Div(style={'background': colors['background_solid'], 'fontFami
         ]),
 
         # ====================================================================
+        # SECCION 4: ASISTENTE IA CONVERSACIONAL
+        # ====================================================================
+        html.Div(style={
+            'marginBottom': '50px'
+        }, children=[
+            # Titulo de la seccion
+            html.Div(style={
+                'background': colors['gradient_secondary'],
+                'padding': '20px 30px',
+                'marginBottom': '30px',
+                'borderRadius': '12px',
+                'boxShadow': colors['shadow']
+            }, children=[
+                html.H2(
+                    'CodeTrends AI Assistant',
+                    style={
+                        'color': 'white',
+                        'textAlign': 'center',
+                        'margin': '0',
+                        'fontSize': '26px',
+                        'fontWeight': '600'
+                    }
+                )
+            ]),
+
+            # Contenedor del chat
+            html.Div(style={
+                'backgroundColor': colors['card'],
+                'borderRadius': '12px',
+                'boxShadow': colors['shadow'],
+                'padding': '25px',
+                'border': f"1px solid {colors['border_light']}"
+            }, children=[
+                # Descripcion
+                html.P(
+                    'Preguntame sobre lenguajes de programacion, tendencias, comparaciones o recomendaciones de carrera.',
+                    style={
+                        'color': colors['text_light'],
+                        'textAlign': 'center',
+                        'marginBottom': '20px',
+                        'fontSize': '14px'
+                    }
+                ),
+
+                # Preguntas rapidas sugeridas
+                html.Div(style={
+                    'display': 'flex',
+                    'justifyContent': 'center',
+                    'gap': '10px',
+                    'flexWrap': 'wrap',
+                    'marginBottom': '20px'
+                }, children=[
+                    html.Button(
+                        'Mejor lenguaje 2025?',
+                        id='quick-q1',
+                        style={
+                            'padding': '8px 16px',
+                            'borderRadius': '20px',
+                            'border': f"1px solid {colors['accent']}",
+                            'backgroundColor': 'white',
+                            'color': colors['accent'],
+                            'cursor': 'pointer',
+                            'fontSize': '12px'
+                        }
+                    ),
+                    html.Button(
+                        'Python vs JavaScript',
+                        id='quick-q2',
+                        style={
+                            'padding': '8px 16px',
+                            'borderRadius': '20px',
+                            'border': f"1px solid {colors['accent']}",
+                            'backgroundColor': 'white',
+                            'color': colors['accent'],
+                            'cursor': 'pointer',
+                            'fontSize': '12px'
+                        }
+                    ),
+                    html.Button(
+                        'Lenguajes para IA',
+                        id='quick-q3',
+                        style={
+                            'padding': '8px 16px',
+                            'borderRadius': '20px',
+                            'border': f"1px solid {colors['accent']}",
+                            'backgroundColor': 'white',
+                            'color': colors['accent'],
+                            'cursor': 'pointer',
+                            'fontSize': '12px'
+                        }
+                    ),
+                    html.Button(
+                        'Rust o Go?',
+                        id='quick-q4',
+                        style={
+                            'padding': '8px 16px',
+                            'borderRadius': '20px',
+                            'border': f"1px solid {colors['accent']}",
+                            'backgroundColor': 'white',
+                            'color': colors['accent'],
+                            'cursor': 'pointer',
+                            'fontSize': '12px'
+                        }
+                    ),
+                ]),
+
+                # Area de historial del chat
+                html.Div(
+                    id='chat-history',
+                    style={
+                        'height': '400px',
+                        'overflowY': 'auto',
+                        'border': f"1px solid {colors['border_light']}",
+                        'borderRadius': '8px',
+                        'padding': '15px',
+                        'marginBottom': '15px',
+                        'backgroundColor': '#f7fbff'
+                    },
+                    children=[
+                        html.Div([
+                            html.Strong("CodeTrends AI: ", style={'color': colors['accent']}),
+                            html.Span(
+                                "Hola! Soy tu asistente de analisis de lenguajes de programacion. "
+                                "Puedo ayudarte con tendencias, comparaciones y recomendaciones basadas en datos 2020-2025. "
+                                "Que te gustaria saber?",
+                                style={'color': colors['text']}
+                            )
+                        ], style={'marginBottom': '10px', 'padding': '10px', 'backgroundColor': 'white', 'borderRadius': '8px'})
+                    ]
+                ),
+
+                # Input y boton de enviar
+                html.Div(style={
+                    'display': 'flex',
+                    'gap': '10px'
+                }, children=[
+                    dcc.Input(
+                        id='chat-input',
+                        type='text',
+                        placeholder='Escribe tu pregunta aqui...',
+                        style={
+                            'flex': '1',
+                            'padding': '12px 15px',
+                            'borderRadius': '8px',
+                            'border': f"1px solid {colors['border_light']}",
+                            'fontSize': '14px',
+                            'outline': 'none'
+                        },
+                        debounce=True
+                    ),
+                    html.Button(
+                        'Enviar',
+                        id='send-button',
+                        style={
+                            'padding': '12px 25px',
+                            'borderRadius': '8px',
+                            'border': 'none',
+                            'backgroundColor': colors['accent'],
+                            'color': 'white',
+                            'cursor': 'pointer',
+                            'fontSize': '14px',
+                            'fontWeight': 'bold'
+                        }
+                    ),
+                    html.Button(
+                        'Limpiar',
+                        id='clear-button',
+                        style={
+                            'padding': '12px 20px',
+                            'borderRadius': '8px',
+                            'border': f"1px solid {colors['accent']}",
+                            'backgroundColor': 'white',
+                            'color': colors['accent'],
+                            'cursor': 'pointer',
+                            'fontSize': '14px'
+                        }
+                    )
+                ]),
+
+                # Estado de carga
+                dcc.Loading(
+                    id='loading-chat',
+                    type='dots',
+                    color=colors['accent'],
+                    children=[html.Div(id='chat-loading-output')]
+                ),
+
+                # Store para el historial
+                dcc.Store(id='chat-history-store', data=[])
+            ])
+        ]),
+
+        # ====================================================================
         # FOOTER
         # ====================================================================
         html.Div(style={
@@ -1532,6 +1733,138 @@ def sync_dropdown_with_selection(selected_language, dropdown_options):
         if selected_language in available_languages:
             return selected_language
     return dash.no_update
+
+
+# ============================================================================
+# CALLBACKS PARA EL CHATBOT IA
+# ============================================================================
+
+# Inicializar agente IA (solo si esta disponible)
+ai_agent = None
+if AI_AVAILABLE:
+    try:
+        ai_agent = CodeTrendsAgent()
+        print("CodeTrends AI Agent inicializado correctamente!")
+    except Exception as e:
+        print(f"Error inicializando agente IA: {e}")
+        AI_AVAILABLE = False
+
+
+@app.callback(
+    [Output('chat-history', 'children'),
+     Output('chat-input', 'value'),
+     Output('chat-history-store', 'data'),
+     Output('chat-loading-output', 'children')],
+    [Input('send-button', 'n_clicks'),
+     Input('chat-input', 'n_submit'),
+     Input('clear-button', 'n_clicks'),
+     Input('quick-q1', 'n_clicks'),
+     Input('quick-q2', 'n_clicks'),
+     Input('quick-q3', 'n_clicks'),
+     Input('quick-q4', 'n_clicks')],
+    [State('chat-input', 'value'),
+     State('chat-history', 'children'),
+     State('chat-history-store', 'data')],
+    prevent_initial_call=True
+)
+def handle_chat(send_clicks, enter_submit, clear_clicks,
+                q1_clicks, q2_clicks, q3_clicks, q4_clicks,
+                user_input, chat_children, history_data):
+    """
+    Maneja todas las interacciones del chat
+    """
+    ctx = callback_context
+    if not ctx.triggered:
+        return dash.no_update, dash.no_update, dash.no_update, ""
+
+    triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
+
+    # Colores para los mensajes
+    user_style = {
+        'marginBottom': '10px',
+        'padding': '10px',
+        'backgroundColor': '#e3f2fd',
+        'borderRadius': '8px',
+        'marginLeft': '20%'
+    }
+    ai_style = {
+        'marginBottom': '10px',
+        'padding': '10px',
+        'backgroundColor': 'white',
+        'borderRadius': '8px',
+        'marginRight': '20%',
+        'boxShadow': '0 1px 3px rgba(0,0,0,0.1)'
+    }
+
+    # Manejar boton de limpiar
+    if triggered_id == 'clear-button':
+        if ai_agent:
+            ai_agent.clear_history()
+        initial_message = html.Div([
+            html.Strong("CodeTrends AI: ", style={'color': '#4292c6'}),
+            html.Span(
+                "Historial limpiado. Como puedo ayudarte?",
+                style={'color': '#08306b'}
+            )
+        ], style=ai_style)
+        return [initial_message], '', [], ""
+
+    # Determinar el mensaje a enviar
+    message = None
+
+    if triggered_id in ['send-button', 'chat-input'] and user_input:
+        message = user_input
+    elif triggered_id == 'quick-q1':
+        message = "Cual es el mejor lenguaje para aprender en 2025?"
+    elif triggered_id == 'quick-q2':
+        message = "Compara Python vs JavaScript para desarrollo web"
+    elif triggered_id == 'quick-q3':
+        message = "Que lenguajes deberia aprender para trabajar en Inteligencia Artificial?"
+    elif triggered_id == 'quick-q4':
+        message = "Deberia aprender Rust o Go? Cual tiene mejor futuro?"
+
+    if not message:
+        return dash.no_update, dash.no_update, dash.no_update, ""
+
+    # Crear mensaje del usuario
+    user_message = html.Div([
+        html.Strong("Tu: ", style={'color': '#1976d2'}),
+        html.Span(message, style={'color': '#08306b'})
+    ], style=user_style)
+
+    # Obtener respuesta de la IA
+    if ai_agent and AI_AVAILABLE:
+        try:
+            ai_response = ai_agent.query(message)
+        except Exception as e:
+            ai_response = f"Lo siento, ocurrio un error: {str(e)}"
+    else:
+        ai_response = (
+            "El asistente IA no esta disponible. "
+            "Por favor configura tu API key de Claude en el archivo .env\n\n"
+            "Pasos:\n"
+            "1. Abre el archivo .env en la carpeta del proyecto\n"
+            "2. Reemplaza 'tu-api-key-aqui' con tu API key\n"
+            "3. Obtener key en: https://console.anthropic.com/"
+        )
+
+    # Crear mensaje de la IA
+    ai_message = html.Div([
+        html.Strong("CodeTrends AI: ", style={'color': '#4292c6'}),
+        dcc.Markdown(
+            ai_response,
+            style={'color': '#08306b', 'marginTop': '5px'}
+        )
+    ], style=ai_style)
+
+    # Actualizar historial
+    new_children = (chat_children or []) + [user_message, ai_message]
+
+    # Limitar historial visual a ultimos 20 mensajes
+    if len(new_children) > 40:
+        new_children = new_children[-40:]
+
+    return new_children, '', history_data, ""
 
 
 if __name__ == '__main__':
