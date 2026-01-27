@@ -1,7 +1,8 @@
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
-from dash import Dash, dcc, html, dash_table, Input, Output
+import dash
+from dash import Dash, dcc, html, dash_table, Input, Output, State
 import numpy as np
 from plotly.subplots import make_subplots
 
@@ -36,7 +37,7 @@ df = df_original[df_original['Lenguaje'].isin(LENGUAJES_SELECCIONADOS)].copy()
 # SECCIÓN 1: FUNCIONES PARA ANÁLISIS DE SERIES DE TIEMPO Y POPULARIDAD
 # ============================================================================
 
-def getIndicadorAnio(df, anio1='2024', anio2='2025'):
+def getIndicadorAnio(df, anio1='2024', anio2='2025', selected_language=None):
     """
     ¿Cuál fue el porcentaje de aumento o disminución en la popularidad
     de cada lenguaje de programación en el periodo seleccionado?
@@ -44,7 +45,68 @@ def getIndicadorAnio(df, anio1='2024', anio2='2025'):
     df_anio = df[['Language', anio1, anio2]].copy()
     df_anio['Indicador'] = (df_anio[anio2] - df_anio[anio1]).round(2)
     df_anio = df_anio.sort_values(by="Indicador",ascending=False)
+
+    # Estilos condicionales base
+    style_data_conditional = [
+        # Filas alternas con fondo azul muy claro
+        {
+            "if": {"row_index": "odd"},
+            "backgroundColor": "#f7fbff"
+        },
+        # Indicador positivo - azul claro
+        {
+            "if": {
+                "filter_query": "{Indicador} > 0",
+                "column_id": "Indicador",
+            },
+            "backgroundColor": "#c6dbef",
+            "color": "#084594",
+            "fontWeight": "bold",
+        },
+        # Indicador negativo - rojo suave que combina
+        {
+            "if": {
+                "filter_query": "{Indicador} < 0",
+                "column_id": "Indicador",
+            },
+            "backgroundColor": "#fee5d9",
+            "color": "#a50f15",
+            "fontWeight": "bold",
+        },
+        # Indicador neutro (0)
+        {
+            "if": {
+                "filter_query": "{Indicador} = 0",
+                "column_id": "Indicador",
+            },
+            "backgroundColor": "#f0f0f0",
+            "color": "#636363",
+            "fontWeight": "bold",
+        },
+    ]
+
+    # Si hay un lenguaje seleccionado, resaltar esa fila y atenuar las demás
+    if selected_language:
+        style_data_conditional.append({
+            "if": {
+                "filter_query": f"{{Language}} = '{selected_language}'",
+            },
+            "backgroundColor": "#2171b5",
+            "color": "white",
+            "fontWeight": "bold",
+        })
+        # Atenuar las filas no seleccionadas
+        for lang in df_anio['Language'].unique():
+            if lang != selected_language:
+                style_data_conditional.append({
+                    "if": {
+                        "filter_query": f"{{Language}} = '{lang}'",
+                    },
+                    "opacity": "0.4",
+                })
+
     table = dash_table.DataTable(
+        id='tabla-indicador',
         columns=[
             {"name": "Lenguaje", "id": "Language"},
             {"name": anio1, "id": anio1, "type": "numeric"},
@@ -54,10 +116,13 @@ def getIndicadorAnio(df, anio1='2024', anio2='2025'):
         data=df_anio.to_dict("records"),
         sort_action="native",
         sort_mode="single",
+        row_selectable=False,
+        cell_selectable=True,
         style_table={
             "overflowX": "auto",
             "border": "1px solid #c6dbef",
-            "borderRadius": "8px"
+            "borderRadius": "8px",
+            "cursor": "pointer"
         },
         style_cell={
             "padding": "12px 15px",
@@ -80,48 +145,12 @@ def getIndicadorAnio(df, anio1='2024', anio2='2025'):
             "backgroundColor": "white",
             "border": "1px solid #deebf7"
         },
-        style_data_conditional=[
-            # Filas alternas con fondo azul muy claro
-            {
-                "if": {"row_index": "odd"},
-                "backgroundColor": "#f7fbff"
-            },
-            # Indicador positivo - azul claro
-            {
-                "if": {
-                    "filter_query": "{Indicador} > 0",
-                    "column_id": "Indicador",
-                },
-                "backgroundColor": "#c6dbef",
-                "color": "#084594",
-                "fontWeight": "bold",
-            },
-            # Indicador negativo - rojo suave que combina
-            {
-                "if": {
-                    "filter_query": "{Indicador} < 0",
-                    "column_id": "Indicador",
-                },
-                "backgroundColor": "#fee5d9",
-                "color": "#a50f15",
-                "fontWeight": "bold",
-            },
-            # Indicador neutro (0)
-            {
-                "if": {
-                    "filter_query": "{Indicador} = 0",
-                    "column_id": "Indicador",
-                },
-                "backgroundColor": "#f0f0f0",
-                "color": "#636363",
-                "fontWeight": "bold",
-            },
-        ],
+        style_data_conditional=style_data_conditional,
     )
 
     return table
 
-def create_line_chart(df, anio1=2020, anio2=2025):
+def create_line_chart(df, anio1=2020, anio2=2025, selected_language=None):
     """
     ¿Cómo ha sido el histórico de popularidad de cada uno de los lenguajes
     de programación seleccionados a lo largo del tiempo?
@@ -138,6 +167,16 @@ def create_line_chart(df, anio1=2020, anio2=2025):
         color_discrete_sequence=px.colors.qualitative.Light24,
         markers=True
     )
+
+    # Si hay un lenguaje seleccionado, resaltar solo ese
+    if selected_language:
+        for trace in fig.data:
+            if trace.name == selected_language:
+                trace.line.width = 4
+                trace.marker.size = 10
+            else:
+                trace.opacity = 0.2
+                trace.line.width = 1
 
     fig.update_layout(
         legend=dict(
@@ -159,7 +198,7 @@ def create_line_chart(df, anio1=2020, anio2=2025):
 
     return fig
 
-def get_monthly_winners(df, year1=2020, year2=2025):
+def get_monthly_winners(df, year1=2020, year2=2025, selected_language=None):
     """
     ¿Cuál es el lenguaje de programación con más apariciones en el Top 1
     a lo largo de todos los años registrados?
@@ -173,19 +212,47 @@ def get_monthly_winners(df, year1=2020, year2=2025):
         .size()
         .reset_index(name="Top1_Count").sort_values(by="Top1_Count", ascending=False)
     )
-    fig = px.bar(
-        counts,
-        x='Language',
-        y='Top1_Count',
-        title=f'Número de Veces que Cada Lenguaje Fue el Mejor Calificado ({year1}-{year2})',
-        color='Top1_Count',
-        color_continuous_scale='blues',
-        text='Top1_Count'
-    )
-    fig.update_traces(
-        textfont=dict(size=15, color='black', family='Arial Black'),
-        textposition='outside'
-    )
+
+    # Crear colores personalizados si hay un lenguaje seleccionado
+    if selected_language:
+        colors_list = []
+        opacities = []
+        for lang in counts['Language']:
+            if lang == selected_language:
+                colors_list.append('#084594')  # Azul oscuro para seleccionado
+                opacities.append(1)
+            else:
+                colors_list.append('#c6dbef')  # Azul claro para no seleccionados
+                opacities.append(0.3)
+
+        fig = go.Figure(data=[go.Bar(
+            x=counts['Language'],
+            y=counts['Top1_Count'],
+            text=counts['Top1_Count'],
+            marker=dict(color=colors_list, opacity=opacities),
+            textfont=dict(size=15, color='black', family='Arial Black'),
+            textposition='outside'
+        )])
+        fig.update_layout(
+            title=f'Número de Veces que Cada Lenguaje Fue el Mejor Calificado ({year1}-{year2})',
+            xaxis_title='Language',
+            yaxis_title='Top1_Count'
+        )
+    else:
+        fig = px.bar(
+            counts,
+            x='Language',
+            y='Top1_Count',
+            title=f'Número de Veces que Cada Lenguaje Fue el Mejor Calificado ({year1}-{year2})',
+            color='Top1_Count',
+            color_continuous_scale='blues',
+            text='Top1_Count'
+        )
+        fig.update_traces(
+            textfont=dict(size=15, color='black', family='Arial Black'),
+            textposition='outside'
+        )
+
     fig.update_layout(
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(0,0,0,0)',
@@ -202,11 +269,19 @@ def get_monthly_winners(df, year1=2020, year2=2025):
 # SECCIÓN 2: FUNCIONES PARA GITHUB TRENDING
 # ============================================================================
 
-def crear_grafico_promedio_estrellas():
+def crear_grafico_promedio_estrellas(selected_language=None):
     """
     Gráfico 1: Promedio de Estrellas por Lenguaje
     """
     top_10 = df_stats_lang.nlargest(10, 'Promedio_Stars')
+
+    # Crear colores y opacidades basados en selección
+    if selected_language and selected_language in top_10['Language'].values:
+        colors_list = ['#084594' if lang == selected_language else '#c6dbef' for lang in top_10['Language']]
+        opacities = [1 if lang == selected_language else 0.3 for lang in top_10['Language']]
+    else:
+        colors_list = top_10['Promedio_Stars']
+        opacities = [1] * len(top_10)
 
     fig = go.Figure()
 
@@ -216,10 +291,10 @@ def crear_grafico_promedio_estrellas():
         text=top_10['Promedio_Stars'].apply(lambda x: f'{x:,.0f}'),
         textposition='inside',
         marker=dict(
-            color=top_10['Promedio_Stars'],
-            colorscale='blues',
+            color=colors_list if selected_language else top_10['Promedio_Stars'],
+            colorscale='blues' if not selected_language else None,
             showscale=False,
-            colorbar=dict(title="Estrellas<br>Promedio")
+            opacity=opacities if selected_language else None
         ),
         hovertemplate='<b>%{x}</b><br>' +
                       'Promedio de Estrellas: %{y:,.0f}<br>' +
@@ -663,6 +738,9 @@ fig_dropdown, lista_lenguajes = crear_dropdown_repos_por_lenguaje()
 # ============================================================================
 
 app.layout = html.Div(style={'background': colors['background_solid'], 'fontFamily': 'Segoe UI, Arial, sans-serif', 'minHeight': '100vh'}, children=[
+
+    # Store para guardar el lenguaje seleccionado (interactividad tipo Power BI)
+    dcc.Store(id='selected-language-store', data=None),
 
     # ====================================================================
     # HEADER PRINCIPAL DEL DASHBOARD
@@ -1289,6 +1367,113 @@ def actualizar_medidores(anio_seleccionado, num_lenguajes):
     o se cambia el número de lenguajes a mostrar
     """
     return crear_medidores_promedio(anio_seleccionado, num_lenguajes)
+
+
+# ============================================================================
+# CALLBACKS PARA INTERACTIVIDAD TIPO POWER BI
+# ============================================================================
+
+# Callback para actualizar el store cuando se hace clic en la tabla
+@app.callback(
+    Output('selected-language-store', 'data'),
+    [Input('tabla-indicador', 'active_cell'),
+     Input('grafico-promedio-estrellas', 'clickData')],
+    [State('tabla-indicador', 'data'),
+     State('selected-language-store', 'data')],
+    prevent_initial_call=True
+)
+def update_selected_language(active_cell, click_data_stars, table_data, current_selection):
+    """
+    Actualiza el lenguaje seleccionado basado en clics en tabla o gráficos
+    """
+    from dash import ctx
+
+    triggered_id = ctx.triggered_id
+
+    if triggered_id == 'tabla-indicador' and active_cell:
+        row_idx = active_cell['row']
+        selected_lang = table_data[row_idx]['Language']
+        # Si se hace clic en el mismo lenguaje, deseleccionar
+        if selected_lang == current_selection:
+            return None
+        return selected_lang
+
+    elif triggered_id == 'grafico-promedio-estrellas' and click_data_stars:
+        selected_lang = click_data_stars['points'][0]['x']
+        if selected_lang == current_selection:
+            return None
+        return selected_lang
+
+    return current_selection
+
+
+# Callback para actualizar Sección 1 con selección de lenguaje
+@app.callback(
+    Output('tabla-container', 'children', allow_duplicate=True),
+    Output('timeseries-container', 'children', allow_duplicate=True),
+    Output('winners-container', 'children', allow_duplicate=True),
+    [Input('selected-language-store', 'data')],
+    [State('year-range-slider', 'value')],
+    prevent_initial_call=True
+)
+def update_section1_with_selection(selected_language, year_range):
+    """
+    Actualiza la sección 1 cuando cambia el lenguaje seleccionado
+    """
+    if year_range and len(year_range) == 2:
+        year1, year2 = str(year_range[0]), str(year_range[1])
+        tabla = getIndicadorAnio(rating_promedio_df, year1, year2, selected_language)
+        line_chart = dcc.Graph(
+            figure=create_line_chart(time_series_df, year_range[0], year_range[1], selected_language),
+            id='grafico-line-chart'
+        )
+        winners_chart = dcc.Graph(
+            figure=get_monthly_winners(time_series_df, year_range[0], year_range[1], selected_language),
+            id='grafico-winners'
+        )
+        return tabla, line_chart, winners_chart
+
+    tabla = getIndicadorAnio(rating_promedio_df, '2020', '2025', selected_language)
+    line_chart = dcc.Graph(
+        figure=create_line_chart(time_series_df, 2020, 2025, selected_language),
+        id='grafico-line-chart'
+    )
+    winners_chart = dcc.Graph(
+        figure=get_monthly_winners(time_series_df, 2020, 2025, selected_language),
+        id='grafico-winners'
+    )
+    return tabla, line_chart, winners_chart
+
+
+# Callback para actualizar gráfico de estrellas con selección
+@app.callback(
+    Output('grafico-promedio-estrellas', 'figure'),
+    [Input('selected-language-store', 'data')]
+)
+def update_stars_chart(selected_language):
+    """
+    Actualiza el gráfico de promedio de estrellas con el lenguaje seleccionado
+    """
+    return crear_grafico_promedio_estrellas(selected_language)
+
+
+# Callback para sincronizar el dropdown de lenguaje con la selección
+@app.callback(
+    Output('dropdown-lenguaje', 'value'),
+    [Input('selected-language-store', 'data')],
+    [State('dropdown-lenguaje', 'options')],
+    prevent_initial_call=True
+)
+def sync_dropdown_with_selection(selected_language, dropdown_options):
+    """
+    Sincroniza el dropdown de lenguaje con la selección global
+    """
+    if selected_language:
+        # Verificar si el lenguaje existe en las opciones del dropdown
+        available_languages = [opt['value'] for opt in dropdown_options]
+        if selected_language in available_languages:
+            return selected_language
+    return dash.no_update
 
 
 if __name__ == '__main__':
