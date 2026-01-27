@@ -1222,181 +1222,191 @@ app.layout = html.Div(style={'background': colors['background_solid'], 'fontFami
         ]),
 
         # ====================================================================
-        # SECCION 4: ASISTENTE IA CONVERSACIONAL
+        # CHATBOT FLOTANTE (ESTILO COPILOT)
         # ====================================================================
-        html.Div(style={
-            'marginBottom': '50px'
+        # Store para controlar si el chat está abierto o cerrado
+        dcc.Store(id='chat-open-store', data=False),
+        dcc.Store(id='chat-history-store', data=[]),
+
+        # Contenedor flotante del chatbot
+        html.Div(id='chatbot-container', style={
+            'position': 'fixed',
+            'bottom': '30px',
+            'right': '30px',
+            'zIndex': '9999'
         }, children=[
-            # Titulo de la seccion
-            html.Div(style={
-                'background': colors['gradient_secondary'],
-                'padding': '20px 30px',
-                'marginBottom': '30px',
-                'borderRadius': '12px',
-                'boxShadow': colors['shadow']
-            }, children=[
-                html.H2(
-                    'CodeTrends AI Assistant',
-                    style={
-                        'color': 'white',
-                        'textAlign': 'center',
-                        'margin': '0',
-                        'fontSize': '26px',
-                        'fontWeight': '600'
-                    }
-                )
-            ]),
-
-            # Contenedor del chat
-            html.Div(style={
-                'backgroundColor': colors['card'],
-                'borderRadius': '12px',
-                'boxShadow': colors['shadow'],
-                'padding': '25px',
-                'border': f"1px solid {colors['border_light']}"
-            }, children=[
-                # Descripcion
-                html.P(
-                    'Preguntame sobre lenguajes de programacion, tendencias, comparaciones o recomendaciones de carrera.',
-                    style={
-                        'color': colors['text_light'],
-                        'textAlign': 'center',
-                        'marginBottom': '20px',
-                        'fontSize': '14px'
-                    }
-                ),
-
-                # Preguntas rapidas sugeridas
-                html.Div(style={
+            # Botón circular para abrir/cerrar el chat
+            html.Button(
+                id='chat-toggle-button',
+                children=[
+                    html.Div(id='chat-toggle-icon', children='💬', style={
+                        'fontSize': '28px',
+                        'lineHeight': '1'
+                    })
+                ],
+                style={
+                    'width': '60px',
+                    'height': '60px',
+                    'borderRadius': '50%',
+                    'border': 'none',
+                    'background': colors['gradient_primary'],
+                    'color': 'white',
+                    'cursor': 'pointer',
+                    'boxShadow': '0 4px 20px rgba(33, 113, 181, 0.4)',
                     'display': 'flex',
+                    'alignItems': 'center',
                     'justifyContent': 'center',
-                    'gap': '10px',
-                    'flexWrap': 'wrap',
-                    'marginBottom': '20px'
+                    'transition': 'transform 0.3s ease, box-shadow 0.3s ease'
+                }
+            ),
+
+            # Panel del chat (inicialmente oculto)
+            html.Div(id='chat-panel', style={
+                'display': 'none',
+                'position': 'absolute',
+                'bottom': '75px',
+                'right': '0',
+                'width': '380px',
+                'height': '500px',
+                'backgroundColor': colors['card'],
+                'borderRadius': '16px',
+                'boxShadow': '0 10px 40px rgba(33, 113, 181, 0.3)',
+                'border': f"1px solid {colors['border_light']}",
+                'overflow': 'hidden',
+                'flexDirection': 'column'
+            }, children=[
+                # Header del chat
+                html.Div(style={
+                    'background': colors['gradient_primary'],
+                    'padding': '15px 20px',
+                    'display': 'flex',
+                    'alignItems': 'center',
+                    'justifyContent': 'space-between'
                 }, children=[
+                    html.Div(style={'display': 'flex', 'alignItems': 'center', 'gap': '10px'}, children=[
+                        html.Span('🤖', style={'fontSize': '24px'}),
+                        html.Div([
+                            html.H4('CodeTrends AI', style={
+                                'color': 'white',
+                                'margin': '0',
+                                'fontSize': '16px',
+                                'fontWeight': '600'
+                            }),
+                            html.Span('Asistente de Lenguajes', style={
+                                'color': '#c6dbef',
+                                'fontSize': '11px'
+                            })
+                        ])
+                    ]),
                     html.Button(
-                        'Mejor lenguaje 2025?',
-                        id='quick-q1',
+                        'Limpiar',
+                        id='clear-button',
                         style={
-                            'padding': '8px 16px',
-                            'borderRadius': '20px',
-                            'border': f"1px solid {colors['accent']}",
-                            'backgroundColor': 'white',
-                            'color': colors['accent'],
+                            'padding': '5px 12px',
+                            'borderRadius': '15px',
+                            'border': '1px solid rgba(255,255,255,0.3)',
+                            'backgroundColor': 'transparent',
+                            'color': 'white',
                             'cursor': 'pointer',
-                            'fontSize': '12px'
+                            'fontSize': '11px'
                         }
-                    ),
-                    html.Button(
-                        'Python vs JavaScript',
-                        id='quick-q2',
-                        style={
-                            'padding': '8px 16px',
-                            'borderRadius': '20px',
-                            'border': f"1px solid {colors['accent']}",
-                            'backgroundColor': 'white',
-                            'color': colors['accent'],
-                            'cursor': 'pointer',
-                            'fontSize': '12px'
-                        }
-                    ),
-                    html.Button(
-                        'Lenguajes para IA',
-                        id='quick-q3',
-                        style={
-                            'padding': '8px 16px',
-                            'borderRadius': '20px',
-                            'border': f"1px solid {colors['accent']}",
-                            'backgroundColor': 'white',
-                            'color': colors['accent'],
-                            'cursor': 'pointer',
-                            'fontSize': '12px'
-                        }
-                    ),
-                    html.Button(
-                        'Rust o Go?',
-                        id='quick-q4',
-                        style={
-                            'padding': '8px 16px',
-                            'borderRadius': '20px',
-                            'border': f"1px solid {colors['accent']}",
-                            'backgroundColor': 'white',
-                            'color': colors['accent'],
-                            'cursor': 'pointer',
-                            'fontSize': '12px'
-                        }
-                    ),
+                    )
                 ]),
 
-                # Area de historial del chat
+                # Preguntas rápidas
+                html.Div(style={
+                    'padding': '10px 15px',
+                    'backgroundColor': '#f7fbff',
+                    'borderBottom': f"1px solid {colors['border_light']}",
+                    'display': 'flex',
+                    'gap': '6px',
+                    'flexWrap': 'wrap',
+                    'justifyContent': 'center'
+                }, children=[
+                    html.Button('2025?', id='quick-q1', style={
+                        'padding': '4px 10px', 'borderRadius': '12px',
+                        'border': f"1px solid {colors['accent']}", 'backgroundColor': 'white',
+                        'color': colors['accent'], 'cursor': 'pointer', 'fontSize': '10px'
+                    }),
+                    html.Button('Py vs JS', id='quick-q2', style={
+                        'padding': '4px 10px', 'borderRadius': '12px',
+                        'border': f"1px solid {colors['accent']}", 'backgroundColor': 'white',
+                        'color': colors['accent'], 'cursor': 'pointer', 'fontSize': '10px'
+                    }),
+                    html.Button('Para IA', id='quick-q3', style={
+                        'padding': '4px 10px', 'borderRadius': '12px',
+                        'border': f"1px solid {colors['accent']}", 'backgroundColor': 'white',
+                        'color': colors['accent'], 'cursor': 'pointer', 'fontSize': '10px'
+                    }),
+                    html.Button('Rust/Go?', id='quick-q4', style={
+                        'padding': '4px 10px', 'borderRadius': '12px',
+                        'border': f"1px solid {colors['accent']}", 'backgroundColor': 'white',
+                        'color': colors['accent'], 'cursor': 'pointer', 'fontSize': '10px'
+                    }),
+                ]),
+
+                # Área de historial del chat
                 html.Div(
                     id='chat-history',
                     style={
-                        'height': '400px',
+                        'flex': '1',
                         'overflowY': 'auto',
-                        'border': f"1px solid {colors['border_light']}",
-                        'borderRadius': '8px',
                         'padding': '15px',
-                        'marginBottom': '15px',
-                        'backgroundColor': '#f7fbff'
+                        'backgroundColor': '#f7fbff',
+                        'height': '280px'
                     },
                     children=[
                         html.Div([
-                            html.Strong("CodeTrends AI: ", style={'color': colors['accent']}),
+                            html.Strong("AI: ", style={'color': colors['accent'], 'fontSize': '12px'}),
                             html.Span(
-                                "Hola! Soy tu asistente de analisis de lenguajes de programacion. "
-                                "Puedo ayudarte con tendencias, comparaciones y recomendaciones basadas en datos 2020-2025. "
-                                "Que te gustaria saber?",
-                                style={'color': colors['text']}
+                                "Hola! Soy tu asistente. Pregunta sobre tendencias de lenguajes 2020-2025.",
+                                style={'color': colors['text'], 'fontSize': '13px'}
                             )
-                        ], style={'marginBottom': '10px', 'padding': '10px', 'backgroundColor': 'white', 'borderRadius': '8px'})
+                        ], style={
+                            'marginBottom': '8px', 'padding': '10px',
+                            'backgroundColor': 'white', 'borderRadius': '10px',
+                            'boxShadow': '0 1px 3px rgba(0,0,0,0.08)'
+                        })
                     ]
                 ),
 
-                # Input y boton de enviar
+                # Input y botón de enviar
                 html.Div(style={
+                    'padding': '12px 15px',
+                    'borderTop': f"1px solid {colors['border_light']}",
+                    'backgroundColor': 'white',
                     'display': 'flex',
-                    'gap': '10px'
+                    'gap': '8px'
                 }, children=[
                     dcc.Input(
                         id='chat-input',
                         type='text',
-                        placeholder='Escribe tu pregunta aqui...',
+                        placeholder='Escribe tu pregunta...',
                         style={
                             'flex': '1',
-                            'padding': '12px 15px',
-                            'borderRadius': '8px',
+                            'padding': '10px 14px',
+                            'borderRadius': '20px',
                             'border': f"1px solid {colors['border_light']}",
-                            'fontSize': '14px',
+                            'fontSize': '13px',
                             'outline': 'none'
                         },
                         debounce=True
                     ),
                     html.Button(
-                        'Enviar',
+                        '➤',
                         id='send-button',
                         style={
-                            'padding': '12px 25px',
-                            'borderRadius': '8px',
+                            'width': '40px',
+                            'height': '40px',
+                            'borderRadius': '50%',
                             'border': 'none',
-                            'backgroundColor': colors['accent'],
+                            'background': colors['gradient_primary'],
                             'color': 'white',
                             'cursor': 'pointer',
-                            'fontSize': '14px',
-                            'fontWeight': 'bold'
-                        }
-                    ),
-                    html.Button(
-                        'Limpiar',
-                        id='clear-button',
-                        style={
-                            'padding': '12px 20px',
-                            'borderRadius': '8px',
-                            'border': f"1px solid {colors['accent']}",
-                            'backgroundColor': 'white',
-                            'color': colors['accent'],
-                            'cursor': 'pointer',
-                            'fontSize': '14px'
+                            'fontSize': '16px',
+                            'display': 'flex',
+                            'alignItems': 'center',
+                            'justifyContent': 'center'
                         }
                     )
                 ]),
@@ -1404,13 +1414,10 @@ app.layout = html.Div(style={'background': colors['background_solid'], 'fontFami
                 # Estado de carga
                 dcc.Loading(
                     id='loading-chat',
-                    type='dots',
+                    type='dot',
                     color=colors['accent'],
                     children=[html.Div(id='chat-loading-output')]
-                ),
-
-                # Store para el historial
-                dcc.Store(id='chat-history-store', data=[])
+                )
             ])
         ]),
 
@@ -1750,6 +1757,60 @@ if AI_AVAILABLE:
         AI_AVAILABLE = False
 
 
+# Callback para abrir/cerrar el panel del chat
+@app.callback(
+    [Output('chat-panel', 'style'),
+     Output('chat-toggle-icon', 'children'),
+     Output('chat-open-store', 'data')],
+    [Input('chat-toggle-button', 'n_clicks')],
+    [State('chat-open-store', 'data')],
+    prevent_initial_call=True
+)
+def toggle_chat_panel(n_clicks, is_open):
+    """
+    Abre o cierra el panel del chat cuando se hace clic en el botón flotante
+    """
+    new_state = not is_open
+
+    if new_state:
+        # Chat abierto
+        panel_style = {
+            'display': 'flex',
+            'position': 'absolute',
+            'bottom': '75px',
+            'right': '0',
+            'width': '380px',
+            'height': '500px',
+            'backgroundColor': '#ffffff',
+            'borderRadius': '16px',
+            'boxShadow': '0 10px 40px rgba(33, 113, 181, 0.3)',
+            'border': '1px solid #c6dbef',
+            'overflow': 'hidden',
+            'flexDirection': 'column',
+            'animation': 'fadeIn 0.3s ease'
+        }
+        icon = '✕'
+    else:
+        # Chat cerrado
+        panel_style = {
+            'display': 'none',
+            'position': 'absolute',
+            'bottom': '75px',
+            'right': '0',
+            'width': '380px',
+            'height': '500px',
+            'backgroundColor': '#ffffff',
+            'borderRadius': '16px',
+            'boxShadow': '0 10px 40px rgba(33, 113, 181, 0.3)',
+            'border': '1px solid #c6dbef',
+            'overflow': 'hidden',
+            'flexDirection': 'column'
+        }
+        icon = '💬'
+
+    return panel_style, icon, new_state
+
+
 @app.callback(
     [Output('chat-history', 'children'),
      Output('chat-input', 'value'),
@@ -1779,21 +1840,23 @@ def handle_chat(send_clicks, enter_submit, clear_clicks,
 
     triggered_id = ctx.triggered[0]['prop_id'].split('.')[0]
 
-    # Colores para los mensajes
+    # Colores para los mensajes (estilo compacto para panel flotante)
     user_style = {
-        'marginBottom': '10px',
-        'padding': '10px',
+        'marginBottom': '8px',
+        'padding': '8px 12px',
         'backgroundColor': '#e3f2fd',
-        'borderRadius': '8px',
-        'marginLeft': '20%'
+        'borderRadius': '12px',
+        'marginLeft': '15%',
+        'fontSize': '13px'
     }
     ai_style = {
-        'marginBottom': '10px',
-        'padding': '10px',
+        'marginBottom': '8px',
+        'padding': '8px 12px',
         'backgroundColor': 'white',
-        'borderRadius': '8px',
-        'marginRight': '20%',
-        'boxShadow': '0 1px 3px rgba(0,0,0,0.1)'
+        'borderRadius': '12px',
+        'marginRight': '15%',
+        'boxShadow': '0 1px 3px rgba(0,0,0,0.08)',
+        'fontSize': '13px'
     }
 
     # Manejar boton de limpiar
@@ -1801,10 +1864,10 @@ def handle_chat(send_clicks, enter_submit, clear_clicks,
         if ai_agent:
             ai_agent.clear_history()
         initial_message = html.Div([
-            html.Strong("CodeTrends AI: ", style={'color': '#4292c6'}),
+            html.Strong("AI: ", style={'color': '#4292c6', 'fontSize': '12px'}),
             html.Span(
                 "Historial limpiado. Como puedo ayudarte?",
-                style={'color': '#08306b'}
+                style={'color': '#08306b', 'fontSize': '13px'}
             )
         ], style=ai_style)
         return [initial_message], '', [], ""
@@ -1828,8 +1891,8 @@ def handle_chat(send_clicks, enter_submit, clear_clicks,
 
     # Crear mensaje del usuario
     user_message = html.Div([
-        html.Strong("Tu: ", style={'color': '#1976d2'}),
-        html.Span(message, style={'color': '#08306b'})
+        html.Strong("Tu: ", style={'color': '#1976d2', 'fontSize': '12px'}),
+        html.Span(message, style={'color': '#08306b', 'fontSize': '13px'})
     ], style=user_style)
 
     # Obtener respuesta de la IA
@@ -1841,19 +1904,15 @@ def handle_chat(send_clicks, enter_submit, clear_clicks,
     else:
         ai_response = (
             "El asistente IA no esta disponible. "
-            "Por favor configura tu API key de Claude en el archivo .env\n\n"
-            "Pasos:\n"
-            "1. Abre el archivo .env en la carpeta del proyecto\n"
-            "2. Reemplaza 'tu-api-key-aqui' con tu API key\n"
-            "3. Obtener key en: https://console.anthropic.com/"
+            "Configura tu API key en .env"
         )
 
     # Crear mensaje de la IA
     ai_message = html.Div([
-        html.Strong("CodeTrends AI: ", style={'color': '#4292c6'}),
+        html.Strong("AI: ", style={'color': '#4292c6', 'fontSize': '12px'}),
         dcc.Markdown(
             ai_response,
-            style={'color': '#08306b', 'marginTop': '5px'}
+            style={'color': '#08306b', 'marginTop': '3px', 'fontSize': '13px'}
         )
     ], style=ai_style)
 
@@ -1868,4 +1927,4 @@ def handle_chat(send_clicks, enter_submit, clear_clicks,
 
 
 if __name__ == '__main__':
-    app.run(debug=True, port=8050)
+    app.run(debug=False, port=8050)

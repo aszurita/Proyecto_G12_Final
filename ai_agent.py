@@ -49,31 +49,152 @@ class CodeTrendsAgent:
                     'PHP', 'Kotlin', 'R', 'MATLAB', 'Perl', 'Assembly', 'Fortran'
                 ]
             },
-            'insights': self._generate_insights()
+            'insights': self._generate_insights(),
+            'datasets': {}
         }
 
-        # Cargar datasets si existen
+        # === DATOS ORIGINALES (Carpeta Datos) ===
+        
+        # 1. Series de tiempo TIOBE
         try:
-            # Series de tiempo TIOBE
             tiobe_df = pd.read_csv('Datos/Series_de_Tiempo.csv')
-            knowledge['tiobe_summary'] = self._summarize_tiobe(tiobe_df)
-        except:
-            knowledge['tiobe_summary'] = "Datos TIOBE no disponibles"
+            knowledge['datasets']['series_tiempo'] = {
+                'descripcion': 'Series temporales del índice TIOBE',
+                'resumen': self._summarize_tiobe(tiobe_df),
+                'filas': len(tiobe_df),
+                'columnas': list(tiobe_df.columns)
+            }
+        except Exception as e:
+            knowledge['datasets']['series_tiempo'] = f"Error: {str(e)}"
 
+        # 2. Ranking TIOBE 2025
         try:
-            # GitHub Trending
+            ranking_df = pd.read_csv('Datos/RankingTIOBE2025.csv')
+            top_10 = ranking_df.head(10) if len(ranking_df) >= 10 else ranking_df
+            knowledge['datasets']['ranking_tiobe'] = {
+                'descripcion': 'Ranking actual TIOBE 2025',
+                'top_10': top_10.to_dict('records'),
+                'filas': len(ranking_df)
+            }
+        except Exception as e:
+            knowledge['datasets']['ranking_tiobe'] = f"Error: {str(e)}"
+
+        # 3. Top Repositorios
+        try:
+            top_repos_df = pd.read_csv('Datos/TopRepositorios.csv')
+            knowledge['datasets']['top_repositorios'] = {
+                'descripcion': 'Top repositorios de GitHub',
+                'total_repos': len(top_repos_df),
+                'columnas': list(top_repos_df.columns)
+            }
+        except Exception as e:
+            knowledge['datasets']['top_repositorios'] = f"Error: {str(e)}"
+
+        # 4. Top Repos por Lenguaje
+        try:
+            repos_lang_df = pd.read_csv('Datos/TopReposXLenguajes.csv')
+            knowledge['datasets']['repos_por_lenguaje'] = {
+                'descripcion': 'Repositorios agrupados por lenguaje',
+                'total_repos': len(repos_lang_df),
+                'columnas': list(repos_lang_df.columns)
+            }
+        except Exception as e:
+            knowledge['datasets']['repos_por_lenguaje'] = f"Error: {str(e)}"
+
+        # 5. Madnight Pull Requests (original)
+        try:
+            madnight_df = pd.read_csv('Datos/MadnightPullRequests.csv')
+            knowledge['datasets']['madnight_original'] = {
+                'descripcion': 'Pull Requests Madnight (datos originales)',
+                'filas': len(madnight_df),
+                'columnas': list(madnight_df.columns)
+            }
+        except Exception as e:
+            knowledge['datasets']['madnight_original'] = f"Error: {str(e)}"
+
+        # === DATOS PROCESADOS (Carpeta Datos_procesados) ===
+
+        # 6. Estadísticas de Lenguajes (GitHub)
+        try:
             github_df = pd.read_csv('Datos_procesados/Estadisticas_lenguajes.csv')
-            knowledge['github_summary'] = self._summarize_github(github_df)
-        except:
-            knowledge['github_summary'] = "Datos GitHub no disponibles"
+            knowledge['datasets']['estadisticas_github'] = {
+                'descripcion': 'Estadísticas procesadas de GitHub',
+                'resumen': self._summarize_github(github_df),
+                'filas': len(github_df)
+            }
+        except Exception as e:
+            knowledge['datasets']['estadisticas_github'] = f"Error: {str(e)}"
 
+        # 7. Pull Requests Limpio
         try:
-            # Pull Requests
-            pr_df = pd.read_csv('Datos/Pull_Requests.csv')
-            knowledge['pr_summary'] = self._summarize_pr(pr_df)
-        except:
-            knowledge['pr_summary'] = "Datos Pull Requests no disponibles"
+            pr_clean_df = pd.read_csv('Datos_procesados/MadnightPullRequests_cleaned.csv')
+            knowledge['datasets']['pull_requests'] = {
+                'descripcion': 'Pull Requests procesados y limpios',
+                'resumen': self._summarize_pr(pr_clean_df),
+                'filas': len(pr_clean_df)
+            }
+        except Exception as e:
+            knowledge['datasets']['pull_requests'] = f"Error: {str(e)}"
 
+        # 8. Distribución de Lenguajes
+        try:
+            dist_df = pd.read_csv('Datos_procesados/Distribucion_lenguajes.csv')
+            knowledge['datasets']['distribucion_lenguajes'] = {
+                'descripcion': 'Distribución de lenguajes en el ecosistema',
+                'lenguajes': len(dist_df),
+                'columnas': list(dist_df.columns)
+            }
+        except Exception as e:
+            knowledge['datasets']['distribucion_lenguajes'] = f"Error: {str(e)}"
+
+        # 9. Promedio Estrellas Top 10
+        try:
+            prom_stars_df = pd.read_csv('Datos_procesados/Promedio_estrellas_top10.csv')
+            knowledge['datasets']['promedio_estrellas'] = {
+                'descripcion': 'Promedio de estrellas en top 10 repos por lenguaje',
+                'datos': prom_stars_df.to_dict('records'),
+                'filas': len(prom_stars_df)
+            }
+        except Exception as e:
+            knowledge['datasets']['promedio_estrellas'] = f"Error: {str(e)}"
+
+        # 10. Rating Promedio
+        try:
+            rating_df = pd.read_csv('Datos_procesados/Rating_promedio.csv')
+            knowledge['datasets']['rating_promedio'] = {
+                'descripcion': 'Rating promedio de lenguajes (TIOBE)',
+                'datos': rating_df.to_dict('records'),
+                'filas': len(rating_df)
+            }
+        except Exception as e:
+            knowledge['datasets']['rating_promedio'] = f"Error: {str(e)}"
+
+        # 11. Repos por Lenguaje Clean
+        try:
+            repos_clean_df = pd.read_csv('Datos_procesados/Repos_por_lenguaje_clean.csv')
+            knowledge['datasets']['repos_lenguaje_clean'] = {
+                'descripcion': 'Repositorios por lenguaje (procesado)',
+                'total': len(repos_clean_df),
+                'columnas': list(repos_clean_df.columns)
+            }
+        except Exception as e:
+            knowledge['datasets']['repos_lenguaje_clean'] = f"Error: {str(e)}"
+
+        # 12. Top Repos Clean
+        try:
+            top_clean_df = pd.read_csv('Datos_procesados/Top_repos_clean.csv')
+            knowledge['datasets']['top_repos_clean'] = {
+                'descripcion': 'Top repositorios (procesado y limpio)',
+                'total': len(top_clean_df),
+                'columnas': list(top_clean_df.columns)
+            }
+        except Exception as e:
+            knowledge['datasets']['top_repos_clean'] = f"Error: {str(e)}"
+
+        # Generar resumen de carga
+        datasets_cargados = sum(1 for v in knowledge['datasets'].values() if isinstance(v, dict))
+        knowledge['metadata']['datasets_cargados'] = f"{datasets_cargados}/12 datasets"
+        
         return knowledge
 
     def _generate_insights(self):
